@@ -1,0 +1,316 @@
+<svg xmlns="http://www.w3.org/2000/svg" width='22' height='22' onload="init(this)" id="canvas">
+  <style type="text/css">
+    <![CDATA[
+      @keyframes spin {
+        from {opacity: 1.0;}
+        to   {opacity: 0.0;}
+      }
+
+      .item {
+        animation: spin 0.5s ease alternate infinite;
+        x: 0;
+        y: -8;
+        fill: #00b2ff;
+      }
+    ]]>
+  </style>
+  <script type="text/javascript">
+    <![CDATA[
+      var colors = {
+        error: "#e05d44",
+        loading: "#9f9f9f",
+        legacy: "#dfb317",
+        success: "#4c1",
+        shadowOpacity: 0.3,
+        shadow: "#010101"
+      };
+
+      var labels = {
+        loading: "Loading",
+        timeout: "Unreachable",
+        error:   "Error",
+        invalidServer: "Invalid Server",
+        badBrowser: "Bad Browser",
+        badRequest: "Bad URL"
+      };
+
+      var consts = {
+        labelBuffer: 5,
+        lineSize: 22,
+        lineOffset: 16,
+        spinnerCount: 8,
+        NS: "http://www.w3.org/2000/svg",
+        timeoutValue: 15000
+      };
+
+      // Offset the text item to the appropriate location.
+      function offsetItem(item, x) {
+        item.setAttribute("x", x);
+
+        var classes = item.getAttribute("class");
+        indexStr = classes.replace(/title/g, "");
+        indexStr = indexStr.replace(/label/g, "");
+        indexStr = indexStr.replace(/shadow/g, "");
+        indexStr = indexStr.replace(/text/g, "").trim();
+
+        y = consts.lineOffset + consts.lineSize * parseInt(indexStr);
+
+        if(classes.match(/\bshadow\b/)) {
+          ++y; // off set the shadow by one pixel.
+        }
+
+        item.setAttribute("y", y);
+
+        return y;
+      }
+
+      // resize the badge.
+      function resizeBadge() {
+        var items = document.getElementsByClassName("title");
+        var titleWidth = 18;
+        for(var i = 0; i < items.length; ++i) {
+          var box = items[i].getBBox();
+          var w = box.width;
+
+          if(w > titleWidth) titleWidth = w;
+        }
+
+        items = document.getElementsByClassName("label");
+        var labelWidth = 0;
+        for(var i = 0; i < items.length; ++i) {
+          var w = items[i].getBBox().width;
+          if(w > labelWidth) labelWidth = w;
+        }
+
+        titleWidth += consts.labelBuffer * 2;
+        labelWidth += consts.labelBuffer * 2;
+
+        var items = document.getElementsByClassName("title");
+        height = consts.lineOffset;
+        for(var i = 0; i < items.length; ++i) {
+          var h = offsetItem(items[i], 4);
+          if(h > height) height = h;
+        }
+
+        var items = document.getElementsByClassName("label");
+        for(var i = 0; i < items.length; ++i) {
+          var h = offsetItem(items[i], consts.labelBuffer + titleWidth);
+          if(h > height) height = h;
+        }
+
+        height += consts.labelBuffer;
+
+        var canvasElem = document.getElementById("canvas");
+        var titlePathElem = document.getElementById("titlePath");
+        var labelPathElem = document.getElementById("labelPath");
+        var capPathElem = document.getElementById("capPath");
+        var maskElem = document.getElementById("aMaskRect");
+
+        canvasElem.setAttribute("height", height);
+        maskElem.setAttribute("height", height);
+        canvasElem.setAttribute("width", titleWidth + labelWidth);
+        maskElem.setAttribute("width", titleWidth + labelWidth);
+
+        titlePathElem.setAttribute("d", "M0 0h" + labelWidth + "v" + height + "H0z");
+        labelPathElem.setAttribute("d", "M" + titleWidth + " 0h" + labelWidth + "v" + height + "H" + titleWidth + "z");
+        capPathElem.setAttribute("d", "M0 0h" + (titleWidth + labelWidth) + "v" + height + "H0z");
+      }
+
+      // Get the query strings.
+      var qs = (function(a) {
+          if (a == "") return {};
+          var b = {};
+          for (var i = 0; i < a.length; ++i)
+          {
+              var p=a[i].split('=', 2);
+              if (p.length == 1)
+                  b[p[0]] = "";
+              else
+                  b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+          }
+          return b;
+      })(window.location.search.substr(1).split('&'));
+
+      // Set the specific component text.
+      function setComponentText(text, type, index, parent) {
+        var shadowItem = document.createElementNS(consts.NS,"text");
+        var item = document.createElementNS(consts.NS,"text");
+
+        shadowItem.setAttribute("class", "shadow " + type + " " + type + index);
+        shadowItem.setAttribute("fill", colors.shadow);
+        shadowItem.setAttribute("fill-opacity", colors.shadowOpacity);
+        shadowItem.textContent = text;
+
+        item.setAttribute("class", "text " + type + " " + type + index);
+        item.textContent = text;
+
+        parent.appendChild(shadowItem);
+        parent.appendChild(item);
+      }
+
+      // Set the title.
+      function setText(obj, color) {
+
+        var titles = [];
+        var labels = [];
+
+        if(!!obj) {
+          // Check for the title and label values;
+          if(!!obj.title || !!obj.label) {
+            titles.push(obj.title);
+            labels.push(obj.label);
+          } else {
+            for(var prop in obj) {
+              titles.push(prop);
+              labels.push(obj[prop]);
+            }
+          }
+        }
+
+        var textAreaElem = document.getElementById("textArea")
+        var items = textAreaElem.children;
+        for(var i = items.length - 1; i >= 0; --i) {
+          items[i].remove();
+        }
+
+        for (var index = 0; index < labels.length; ++index) {
+
+          var title = titles[index];
+          var label = labels[index];
+
+          if(!!title) {
+            setSpinner(false); // if there is text, remove the spinner.
+          }
+
+          // Add all the elements.
+          setComponentText(title, "title", index, textAreaElem);
+          setComponentText(label, "label", index, textAreaElem);
+        }
+
+        var colorElem = document.getElementById("labelPath");
+        colorElem.setAttribute("fill", color);
+
+        resizeBadge();
+      }
+
+      // Set the error text.
+      function setError(label) {
+        setText({ title: labels.error, label: label }, colors.error);
+      }
+
+      // Set the spinner.
+      function setSpinner(enable) {
+        if(enable) {
+          var angle = 360 / consts.spinnerCount;
+          for(var i = 0; i < consts.spinnerCount; ++i) {
+            var r = document.createElementNS(consts.NS,"rect");
+
+            r.setAttribute("class", "item item" + i)
+            r.style["animation-delay"] = "" + (1.0 * i / consts.spinnerCount) + "s"
+
+            r.setAttribute("width", 2);
+            r.setAttribute("height", 4);
+
+            r.setAttribute("transform", "translate(11 10) rotate(" + (angle * i) + " 1 0)");
+
+            document.getElementById('canvas').appendChild(r);
+          }
+
+          var titlePathElem = document.getElementById("titlePath");
+          titlePathElem.setAttribute("d", "M0 0h26v" + consts.lineSize + "H0z");
+        } else {
+          var items = document.getElementsByClassName("item");
+          for(var i = items.length - 1; i >= 0; --i) {
+            items[i].remove();
+          }
+        }
+        resizeBadge();
+      }
+
+      var sharedServerStatus = "calling";
+
+      // Call the server with the specified URL.
+      function callServer(url) {
+        console.log("Reaching out to url: " + url);
+
+        var xhr = new XMLHttpRequest();
+        if("withCredentials" in xhr) {
+        xhr.open("GET", url, true);
+        } else if(typeof XDomainRequest != "undefined") {
+          xhr = new XDomainRequest();
+          xhr.open("GET", url)
+        } else {
+          setError(labels.badBrowser);
+          sharedServerStatus = "unsupported";
+        }
+
+        xhr.onload = function(e) {
+          if(sharedServerStatus == "calling") {
+            sharedServerStatus = "got-data";
+            if(e.target.status >= 200 && e.target.status < 400) {
+              var resp = JSON.parse(xhr.response);
+              setText(resp.versions, colors.success);
+            } else {
+              setError(e.target.response);
+            }
+          }
+        }
+
+        xhr.onerror = function() {
+          if(sharedServerStatus == "calling") {
+            setError(labels.badRequest);
+            sharedServerStatus = "error";
+          }
+        }
+
+        try {
+          xhr.send();
+        } catch(e) {
+          setError(e);
+        }
+      }
+
+      // initialize the badge.
+      function init(badge) {
+        var server = qs["server"]
+        if(!!server) {
+          var url = "http://" + server + "/versions"
+
+          setText({ label: labels.loading }, colors.loading);
+          setSpinner(true);
+
+          setTimeout(function() {
+              if(sharedServerStatus == "calling") {
+                sharedServerStatus = "error";
+                setError(labels.timeout);
+              }
+
+              console.log("Timeout completed. Status: " + sharedServerStatus);
+            }, consts.timeoutValue);
+
+          callServer(url);
+        } else {
+          setError(labels.invalidServer);
+        }
+      }
+    ]]>
+  </script>
+  <linearGradient id="b" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="a">
+    <rect id="aMaskRect" width="83" height="22" rx="3" fill="#fff"/>
+  </mask>
+  <g mask="url(#a)">
+    <path id="titlePath" fill="#555" d="M0 0h26v22H0z"/>
+    <path id="labelPath" fill="#e05d44" d="M26 0h83v22H26z"/>
+    <path id="capPath" fill="url(#b)" d="M0 0h83v22H0z"/>
+  </g>
+  <g id="textArea" fill="#fff" text-anchor="start" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="12">
+    <text x="4" y="17" fill="#010101" fill-opacity=".3"></text>
+    <text x="4" y="16"></text>
+    <text x="30" y="17" fill="#010101" fill-opacity=".3">...</text>
+    <text x="30" y="16">...</text>
+  </g>
+</svg>
