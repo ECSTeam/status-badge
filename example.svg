@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width='22' height='22' onload="init(this)" id="canvas">
+<svg xmlns="http://www.w3.org/2000/svg" width='156' height='44' onload="init(this)" id="canvas">
   <linearGradient id="b" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
   <mask id="a">
-    <rect width="83" height="22" rx="3" fill="#fff"/>
+    <rect width="156" height="44" rx="3" fill="#fff"/>
   </mask>
   <g mask="url(#a)">
-    <path id="titlePath" fill="#555" d="M0 0h26v22H0z"/>
-    <path id="labelPath" fill="#e05d44" d="M26 0h83v22H26z"/>
-    <path id="capPath" fill="url(#b)" d="M0 0h83v22H0z"/>
+    <path fill="#555" d="M0 0h95v44H0z"/>
+    <path fill="#4c1" d="M61 0h95v44H61z"/>
+	<path fill="url(#b)" d="M0 0h156v44H0z"/>
   </g>
   <g id="textArea" fill="#fff" text-anchor="start" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="12">
 	<text fill="#010101" fill-opacity="0.3" x="4" y="17">ERT</text>
@@ -22,3 +22,4 @@
     <text class="text label label1" x="66" y="38">1.7</text>
   </g>
 </svg>
+
