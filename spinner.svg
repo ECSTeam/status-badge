@@ -1,9 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width='22' height='22' onload="init(this)" id="canvas">
+<svg xmlns="http://www.w3.org/2000/svg" width='175' height='22' onload="init(this)" id="canvas">
   <style type="text/css">
     <![CDATA[
       @keyframes spin {
         from {opacity: 1.0;}
         to   {opacity: 0.0;}
+      }
+
+      .subtext {
+        font-size: 70%;
+        font-style: italic;
+        fill: #d1f9d4;
+      }
+
+      .shadow {
+        fill: #010101;
+        fill-opacity: 0.3;
+      }
+
+      .shadow {
+        fill: #010101;
+        fill-opacity: 0.3;
       }
 
       .item {
@@ -18,11 +34,10 @@
     <![CDATA[
       var colors = {
         error: "#e05d44",
+        init:   "#afafaf",
         loading: "#9f9f9f",
         legacy: "#dfb317",
         success: "#4c1",
-        shadowOpacity: 0.3,
-        shadow: "#010101"
       };
 
       var labels = {
@@ -31,7 +46,8 @@
         error:   "Error",
         invalidServer: "Invalid Server",
         badBrowser: "Bad Browser",
-        badRequest: "Bad URL"
+        badRequest: "Bad URL",
+        init: "Initializing"
       };
 
       var consts = {
@@ -50,6 +66,7 @@
         var classes = item.getAttribute("class");
         indexStr = classes.replace(/title/g, "");
         indexStr = indexStr.replace(/label/g, "");
+        indexStr = indexStr.replace(/subtext/g, "");
         indexStr = indexStr.replace(/shadow/g, "");
         indexStr = indexStr.replace(/text/g, "").trim();
 
@@ -82,8 +99,19 @@
           if(w > labelWidth) labelWidth = w;
         }
 
+        items = document.getElementsByClassName("subtext");
+        var subtextWidth = 0;
+        for(var i = 0; i < items.length; ++i) {
+          var w = items[i].getBBox().width;
+          if(w > subtextWidth) subtextWidth = w;
+        }
+
         titleWidth += consts.labelBuffer * 2;
         labelWidth += consts.labelBuffer * 2;
+
+        if(subtextWidth > 0) {
+          subtextWidth += consts.labelBuffer * 2;
+        }
 
         var items = document.getElementsByClassName("title");
         height = consts.lineOffset;
@@ -98,6 +126,12 @@
           if(h > height) height = h;
         }
 
+        var items = document.getElementsByClassName("subtext");
+        for(var i = 0; i < items.length; ++i) {
+          var h = offsetItem(items[i], consts.labelBuffer + titleWidth + labelWidth);
+          if(h > height) height = h;
+        }
+
         height += consts.labelBuffer;
 
         var canvasElem = document.getElementById("canvas");
@@ -106,14 +140,17 @@
         var capPathElem = document.getElementById("capPath");
         var maskElem = document.getElementById("aMaskRect");
 
+        var labelAndSubtextWidth = labelWidth + subtextWidth;
+        var fullWidth = titleWidth + labelAndSubtextWidth;
+
         canvasElem.setAttribute("height", height);
         maskElem.setAttribute("height", height);
-        canvasElem.setAttribute("width", titleWidth + labelWidth);
-        maskElem.setAttribute("width", titleWidth + labelWidth);
+        canvasElem.setAttribute("width", fullWidth);
+        maskElem.setAttribute("width", fullWidth);
 
-        titlePathElem.setAttribute("d", "M0 0h" + labelWidth + "v" + height + "H0z");
-        labelPathElem.setAttribute("d", "M" + titleWidth + " 0h" + labelWidth + "v" + height + "H" + titleWidth + "z");
-        capPathElem.setAttribute("d", "M0 0h" + (titleWidth + labelWidth) + "v" + height + "H0z");
+        titlePathElem.setAttribute("d", "M0 0h" + labelAndSubtextWidth + "v" + height + "H0z");
+        labelPathElem.setAttribute("d", "M" + titleWidth + " 0h" + labelAndSubtextWidth + "v" + height + "H" + titleWidth + "z");
+        capPathElem.setAttribute("d", "M0 0h" + fullWidth + "v" + height + "H0z");
       }
 
       // Get the query strings.
@@ -133,19 +170,21 @@
 
       // Set the specific component text.
       function setComponentText(text, type, index, parent) {
-        var shadowItem = document.createElementNS(consts.NS,"text");
-        var item = document.createElementNS(consts.NS,"text");
 
-        shadowItem.setAttribute("class", "shadow " + type + " " + type + index);
-        shadowItem.setAttribute("fill", colors.shadow);
-        shadowItem.setAttribute("fill-opacity", colors.shadowOpacity);
-        shadowItem.textContent = text;
+        // TODO: subtext.
+        if(!!text) {
+          var shadowItem = document.createElementNS(consts.NS,"text");
+          var item = document.createElementNS(consts.NS,"text");
 
-        item.setAttribute("class", "text " + type + " " + type + index);
-        item.textContent = text;
+          shadowItem.setAttribute("class", "shadow " + type + " " + type + index);
+          shadowItem.textContent = text;
 
-        parent.appendChild(shadowItem);
-        parent.appendChild(item);
+          item.setAttribute("class", "text " + type + " " + type + index);
+          item.textContent = text;
+
+          parent.appendChild(shadowItem);
+          parent.appendChild(item);
+        }
       }
 
       // Set the title.
@@ -153,6 +192,7 @@
 
         var titles = [];
         var labels = [];
+        var subtexts = [];
 
         if(!!obj) {
           // Check for the title and label values;
@@ -162,7 +202,15 @@
           } else {
             for(var prop in obj) {
               titles.push(prop);
-              labels.push(obj[prop]);
+
+              var o = obj[prop];
+              if(!!o.ver || !!o.sc) {
+                labels.push(o.ver);
+                subtexts.push(o.sc);
+              } else {
+                labels.push(o);
+                subtexts.push(null);
+              }
             }
           }
         }
@@ -177,6 +225,7 @@
 
           var title = titles[index];
           var label = labels[index];
+          var subtext = subtexts[index];
 
           if(!!title) {
             setSpinner(false); // if there is text, remove the spinner.
@@ -185,6 +234,7 @@
           // Add all the elements.
           setComponentText(title, "title", index, textAreaElem);
           setComponentText(label, "label", index, textAreaElem);
+          setComponentText(subtext, "subtext", index, textAreaElem);
         }
 
         var colorElem = document.getElementById("labelPath");
@@ -272,13 +322,20 @@
 
       // initialize the badge.
       function init(badge) {
+        setSpinner(true);
+        setText({ label: labels.init }, colors.init);
+
         var server = qs["server"]
         if(!!server) {
-          var url = "http://" + server + "/versions"
+
+          var url = "http://" + server + "/versions";
+
+          var cells = qs["scv"];
+          if(!!cells) {
+            url += "?scv=1"
+          }
 
           setText({ label: labels.loading }, colors.loading);
-          setSpinner(true);
-
           setTimeout(function() {
               if(sharedServerStatus == "calling") {
                 sharedServerStatus = "error";
@@ -300,17 +357,17 @@
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
   <mask id="a">
-    <rect id="aMaskRect" width="83" height="22" rx="3" fill="#fff"/>
+    <rect id="aMaskRect" width="97" height="22" rx="3" fill="#fff"/>
   </mask>
   <g mask="url(#a)">
     <path id="titlePath" fill="#555" d="M0 0h26v22H0z"/>
-    <path id="labelPath" fill="#e05d44" d="M26 0h83v22H26z"/>
-    <path id="capPath" fill="url(#b)" d="M0 0h83v22H0z"/>
+    <path id="labelPath" fill="#9f9f9f" d="M26 0h97v22H26z"/>
+    <path id="capPath" fill="url(#b)" d="M0 0h97v22H0z"/>
   </g>
   <g id="textArea" fill="#fff" text-anchor="start" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="12">
     <text x="4" y="17" fill="#010101" fill-opacity=".3"></text>
     <text x="4" y="16"></text>
-    <text x="30" y="17" fill="#010101" fill-opacity=".3">...</text>
-    <text x="30" y="16">...</text>
+    <text id="xx" x="30" y="17" fill="#010101" fill-opacity=".3">Initializing</text>
+    <text x="30" y="16">Initializing</text>
   </g>
 </svg>
