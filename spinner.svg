@@ -316,7 +316,7 @@
         try {
           xhr.send();
         } catch(e) {
-          setError(e);
+          setError(labels.error);
         }
       }
 
